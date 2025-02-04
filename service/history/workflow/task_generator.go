@@ -757,7 +757,7 @@ func (r *TaskGeneratorImpl) GenerateMigrationTasks() ([]tasks.Task, int64, error
 			Version:     lastItem.GetVersion(),
 			Priority:    enumsspb.TASK_PRIORITY_LOW,
 		}}
-		if r.mutableState.IsTransitionHistoryEnabled() {
+		if r.mutableState.IsTransitionHistoryEnabled() && len(executionInfo.TransitionHistory) > 0 {
 			transitionHistory := executionInfo.TransitionHistory
 			if len(transitionHistory) == 0 {
 				// TODO: Handle the case where state-based replication is re-enabled.
@@ -801,7 +801,7 @@ func (r *TaskGeneratorImpl) GenerateMigrationTasks() ([]tasks.Task, int64, error
 		})
 	}
 
-	if r.mutableState.IsTransitionHistoryEnabled() {
+	if r.mutableState.IsTransitionHistoryEnabled() && len(executionInfo.TransitionHistory) > 0 {
 		transitionHistory := executionInfo.TransitionHistory
 		if len(transitionHistory) == 0 {
 			// TODO: Handle the case where state-based replication is re-enabled.
