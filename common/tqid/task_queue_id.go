@@ -358,6 +358,11 @@ func (p *NormalPartition) RoutingKey() string {
 	return fmt.Sprintf("%s:%s:%d", p.NamespaceId(), p.RpcName(), p.TaskType())
 }
 
+// TODO: Remove
+func (pk PartitionKey) PartitionId() int {
+	return pk.partitionId
+}
+
 // parseRpcName takes the rpc name of a task queue partition and returns a ParseTaskQueuePartition.
 // Returns an error if the given name is not a valid rpc name.
 func parseRpcName(rpcName string) (string, int, error) {

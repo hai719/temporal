@@ -1094,39 +1094,40 @@ func (pm *taskQueuePartitionManagerImpl) makePollerScalingDecision(
 	stats *taskqueuepb.TaskQueueStats, task *internalTask, pollStartTime time.Time,
 ) *sdkpb.PollerScalingDecision {
 	pd := &sdkpb.PollerScalingDecision{}
-	decisionMsg := ""
-	if stats.ApproximateBacklogCount > 0 {
+	pd.PartitionNum = int32(pm.partition.Key().PartitionId())
+	pollWaitTime := pm.engine.timeSource.Since(pollStartTime)
+	if stats.ApproximateBacklogCount > 1 {
+		// TODO: Configurable minimum backlog
 		// Always increase when there is a backlog, even if we're a partition. Also important to increase for sticky
 		// queues.
 		pd.PollerDelta = 1
-		decisionMsg = "Poller up - backlog"
+		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_BACKLOG
 	} else if !pm.partition.IsRoot() {
 		// Non-root partitions don't have an appropriate view of the data to make decisions beyond backlog.
 		pd = nil
-		decisionMsg = "Not root"
 	} else if task.source == serverenumspb.TASK_SOURCE_HISTORY &&
-		pm.engine.timeSource.Since(pollStartTime) > 1*time.Second {
+		pollWaitTime > 1*time.Second {
 		// TODO: Configurable period
 		// Decrease if any poll matched after sitting idle for some configured period
 		pd.PollerDelta = -1
-		decisionMsg = "Poller down - sync match"
+		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_SYNC_MATCH
 	} else if (stats.TasksAddRate / stats.TasksDispatchRate) > 1.2 {
 		// TODO: Configurable fraction
-		// Increase if we're adding tasks faster than we're dispatching them
+		// Increase if we're adding tasks faster than we're dispatching them. This case is particularly useful when
+		// a new burst of traffic arrives. The backlog may stay at or bounce off of zero as tasks are delivered, and
+		// this allows the pollers to start scaling without accumulating a backlog.
 		pd.PollerDelta = 1
-		decisionMsg = "Poller up - add rate"
+		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_DISPATCH_RATE_UP
 	} else if (stats.TasksAddRate / stats.TasksDispatchRate) < 0.8 {
 		// TODO: Configurable fraction
 		// Decrease if we're dispatching tasks faster than we're adding them
 		pd.PollerDelta = -1
-		decisionMsg = "Poller down - add rate"
+		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_DISPATCH_RATE_DOWN
 	}
 
 	// Avoid thrashing pollers all over the place by limiting how frequently change decisions are issued.
 	if !(pd != nil && pd.PollerDelta != 0) || !pm.pollerScalingRateLimiter.Allow() {
 		pd = nil
-	} else {
-		pm.logger.Warn(decisionMsg, tag.Value(stats))
 	}
 
 	return pd
