@@ -160,6 +160,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect
 )
-
-// sj-poller-scaling-test branch
-replace go.temporal.io/api => go.temporal.io/api v1.43.3-0.20250204221334-85c7370e52f2

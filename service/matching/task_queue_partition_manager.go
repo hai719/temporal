@@ -1093,13 +1093,11 @@ func (pm *taskQueuePartitionManagerImpl) makePollerScalingDecision(
 	stats *taskqueuepb.TaskQueueStats, task *internalTask, pollStartTime time.Time,
 ) *sdkpb.PollerScalingDecision {
 	pd := &sdkpb.PollerScalingDecision{}
-	pd.PartitionNum = int32(pm.partition.Key().PartitionId())
 	pollWaitTime := pm.engine.timeSource.Since(pollStartTime)
 	if stats.ApproximateBacklogCount > pm.config.PollerScalingMinimumBacklog() {
 		// Always increase when there is a backlog, even if we're a partition. It's also important to increase for
 		// sticky queues.
 		pd.PollerDelta = 1
-		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_BACKLOG
 	} else if !pm.partition.IsRoot() {
 		// Non-root partitions don't have an appropriate view of the data to make decisions beyond backlog.
 		pd = nil
@@ -1107,19 +1105,16 @@ func (pm *taskQueuePartitionManagerImpl) makePollerScalingDecision(
 		pollWaitTime >= pm.config.PollerScalingSyncMatchWaitTime() {
 		// Decrease if any poll matched after sitting idle for some configured period
 		pd.PollerDelta = -1
-		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_SYNC_MATCH
 	} else if stats.TasksAddRate/stats.TasksDispatchRate > pm.config.PollerScalingDispatchUpFraction() {
 		// Increase if we're adding tasks faster than we're dispatching them. This case is particularly useful when
 		// a new burst of traffic arrives. The backlog may stay at or bounce off of zero as tasks are delivered, and
 		// this allows the pollers to start scaling without accumulating a backlog.
 		pd.PollerDelta = 1
-		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_DISPATCH_RATE_UP
 	} else if stats.TasksAddRate/stats.TasksDispatchRate < pm.config.PollerScalingDispatchDownFraction() {
 		// Decrease if we're dispatching tasks faster than we're adding them. This case can come up as the converse of
 		// the above, where we have cleared the backlog but are still not hitting the wait-time sync matching case. We
 		// still can will begin to scale down before hitting that case.
 		pd.PollerDelta = -1
-		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_DISPATCH_RATE_DOWN
 	}
 
 	// Avoid thrashing pollers all over the place by limiting how frequently change decisions are issued.
