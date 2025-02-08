@@ -111,8 +111,7 @@ func newTaskQueuePartitionManager(
 		versionedQueues:             make(map[PhysicalTaskQueueVersion]physicalTaskQueueManager),
 		userDataManager:             userDataManager,
 		cachedPhysicalInfoByBuildId: nil,
-		// TODO: Configurable
-		pollerScalingRateLimiter: quotas.NewRateLimiter(10, 1),
+		pollerScalingRateLimiter:    quotas.NewRateLimiter(tqConfig.PollerScalingDecisionsPerSecond(), 1),
 	}
 
 	defaultQ, err := newPhysicalTaskQueueManager(pm, UnversionedQueueKey(partition))
@@ -1096,31 +1095,29 @@ func (pm *taskQueuePartitionManagerImpl) makePollerScalingDecision(
 	pd := &sdkpb.PollerScalingDecision{}
 	pd.PartitionNum = int32(pm.partition.Key().PartitionId())
 	pollWaitTime := pm.engine.timeSource.Since(pollStartTime)
-	if stats.ApproximateBacklogCount > 1 {
-		// TODO: Configurable minimum backlog
-		// Always increase when there is a backlog, even if we're a partition. Also important to increase for sticky
-		// queues.
+	if stats.ApproximateBacklogCount > pm.config.PollerScalingMinimumBacklog() {
+		// Always increase when there is a backlog, even if we're a partition. It's also important to increase for
+		// sticky queues.
 		pd.PollerDelta = 1
 		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_BACKLOG
 	} else if !pm.partition.IsRoot() {
 		// Non-root partitions don't have an appropriate view of the data to make decisions beyond backlog.
 		pd = nil
 	} else if task.source == serverenumspb.TASK_SOURCE_HISTORY &&
-		pollWaitTime > 1*time.Second {
-		// TODO: Configurable period
+		pollWaitTime >= pm.config.PollerScalingSyncMatchWaitTime() {
 		// Decrease if any poll matched after sitting idle for some configured period
 		pd.PollerDelta = -1
 		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_SYNC_MATCH
-	} else if (stats.TasksAddRate / stats.TasksDispatchRate) > 1.2 {
-		// TODO: Configurable fraction
+	} else if stats.TasksAddRate/stats.TasksDispatchRate > pm.config.PollerScalingDispatchUpFraction() {
 		// Increase if we're adding tasks faster than we're dispatching them. This case is particularly useful when
 		// a new burst of traffic arrives. The backlog may stay at or bounce off of zero as tasks are delivered, and
 		// this allows the pollers to start scaling without accumulating a backlog.
 		pd.PollerDelta = 1
 		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_DISPATCH_RATE_UP
-	} else if (stats.TasksAddRate / stats.TasksDispatchRate) < 0.8 {
-		// TODO: Configurable fraction
-		// Decrease if we're dispatching tasks faster than we're adding them
+	} else if stats.TasksAddRate/stats.TasksDispatchRate < pm.config.PollerScalingDispatchDownFraction() {
+		// Decrease if we're dispatching tasks faster than we're adding them. This case can come up as the converse of
+		// the above, where we have cleared the backlog but are still not hitting the wait-time sync matching case. We
+		// still can will begin to scale down before hitting that case.
 		pd.PollerDelta = -1
 		pd.Reason = sdkpb.PollerScalingDecision_DECISION_REASON_DISPATCH_RATE_DOWN
 	}
