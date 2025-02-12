@@ -34,7 +34,6 @@ import (
 	commonpb "go.temporal.io/api/common/v1"
 	deploymentpb "go.temporal.io/api/deployment/v1"
 	enumspb "go.temporal.io/api/enums/v1"
-	sdkpb "go.temporal.io/api/sdk/v1"
 	"go.temporal.io/api/serviceerror"
 	taskqueuepb "go.temporal.io/api/taskqueue/v1"
 	"go.temporal.io/api/workflowservice/v1"
@@ -1091,34 +1090,24 @@ func (pm *taskQueuePartitionManagerImpl) getPerTypeUserData() (*persistencespb.T
 // task queue and the task about to be returned. Does not modify inputs.
 func (pm *taskQueuePartitionManagerImpl) makePollerScalingDecision(
 	stats *taskqueuepb.TaskQueueStats, task *internalTask, pollStartTime time.Time,
-) *sdkpb.PollerScalingDecision {
-	pd := &sdkpb.PollerScalingDecision{}
+) *taskqueuepb.PollerScalingDecision {
+	pd := &taskqueuepb.PollerScalingDecision{}
 	pollWaitTime := pm.engine.timeSource.Since(pollStartTime)
-	if stats.ApproximateBacklogCount > pm.config.PollerScalingMinimumBacklog() {
+	if stats.ApproximateBacklogCount > 0 && stats.ApproximateBacklogAge.AsDuration() > pm.config.PollerScalingBacklogAgeScaleUp() {
 		// Always increase when there is a backlog, even if we're a partition. It's also important to increase for
 		// sticky queues.
-		pd.PollerDelta = 1
+		pd.PollRequestDeltaSuggestion = 1
 	} else if !pm.partition.IsRoot() {
 		// Non-root partitions don't have an appropriate view of the data to make decisions beyond backlog.
 		pd = nil
 	} else if task.source == serverenumspb.TASK_SOURCE_HISTORY &&
 		pollWaitTime >= pm.config.PollerScalingSyncMatchWaitTime() {
 		// Decrease if any poll matched after sitting idle for some configured period
-		pd.PollerDelta = -1
-	} else if stats.TasksAddRate/stats.TasksDispatchRate > pm.config.PollerScalingDispatchUpFraction() {
-		// Increase if we're adding tasks faster than we're dispatching them. This case is particularly useful when
-		// a new burst of traffic arrives. The backlog may stay at or bounce off of zero as tasks are delivered, and
-		// this allows the pollers to start scaling without accumulating a backlog.
-		pd.PollerDelta = 1
-	} else if stats.TasksAddRate/stats.TasksDispatchRate < pm.config.PollerScalingDispatchDownFraction() {
-		// Decrease if we're dispatching tasks faster than we're adding them. This case can come up as the converse of
-		// the above, where we have cleared the backlog but are still not hitting the wait-time sync matching case. We
-		// still can will begin to scale down before hitting that case.
-		pd.PollerDelta = -1
+		pd.PollRequestDeltaSuggestion = -1
 	}
 
 	// Avoid thrashing pollers all over the place by limiting how frequently change decisions are issued.
-	if !(pd != nil && pd.PollerDelta != 0) || !pm.pollerScalingRateLimiter.Allow() {
+	if !(pd != nil && pd.PollRequestDeltaSuggestion != 0) || !pm.pollerScalingRateLimiter.Allow() {
 		pd = nil
 	}
 

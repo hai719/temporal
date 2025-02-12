@@ -117,11 +117,9 @@ type (
 		ListNexusEndpointsLongPollTimeout dynamicconfig.DurationPropertyFn
 		NexusEndpointsRefreshInterval     dynamicconfig.DurationPropertyFn
 
-		PollerScalingMinimumBacklog       dynamicconfig.IntPropertyFnWithTaskQueueFilter
-		PollerScalingSyncMatchWaitTime    dynamicconfig.DurationPropertyFnWithTaskQueueFilter
-		PollerScalingDispatchUpFraction   dynamicconfig.FloatPropertyFnWithTaskQueueFilter
-		PollerScalingDispatchDownFraction dynamicconfig.FloatPropertyFnWithTaskQueueFilter
-		PollerScalingDecisionsPerSecond   dynamicconfig.FloatPropertyFnWithTaskQueueFilter
+		PollerScalingBacklogAgeScaleUp  dynamicconfig.DurationPropertyFnWithTaskQueueFilter
+		PollerScalingSyncMatchWaitTime  dynamicconfig.DurationPropertyFnWithTaskQueueFilter
+		PollerScalingDecisionsPerSecond dynamicconfig.FloatPropertyFnWithTaskQueueFilter
 
 		LogAllReqErrors dynamicconfig.BoolPropertyFnWithNamespaceFilter
 	}
@@ -176,11 +174,9 @@ type (
 		BreakdownMetricsByBuildID   func() bool
 
 		// Poller scaling decisions configuration
-		PollerScalingMinimumBacklog       func() int64
-		PollerScalingSyncMatchWaitTime    func() time.Duration
-		PollerScalingDispatchUpFraction   func() float32
-		PollerScalingDispatchDownFraction func() float32
-		PollerScalingDecisionsPerSecond   func() float64
+		PollerScalingBacklogAgeScaleUp  func() time.Duration
+		PollerScalingSyncMatchWaitTime  func() time.Duration
+		PollerScalingDecisionsPerSecond func() float64
 
 		loadCause loadCause
 	}
@@ -288,11 +284,9 @@ func NewConfig(
 		ListNexusEndpointsLongPollTimeout: dynamicconfig.MatchingListNexusEndpointsLongPollTimeout.Get(dc),
 		NexusEndpointsRefreshInterval:     dynamicconfig.MatchingNexusEndpointsRefreshInterval.Get(dc),
 
-		PollerScalingMinimumBacklog:       dynamicconfig.MatchingPollerScalingMinimumBacklog.Get(dc),
-		PollerScalingSyncMatchWaitTime:    dynamicconfig.MatchingPollerScalingSyncMatchWaitTime.Get(dc),
-		PollerScalingDispatchUpFraction:   dynamicconfig.MatchingPollerScalingDispatchUpFraction.Get(dc),
-		PollerScalingDispatchDownFraction: dynamicconfig.MatchingPollerScalingDispatchDownFraction.Get(dc),
-		PollerScalingDecisionsPerSecond:   dynamicconfig.MatchingPollerScalingDecisionsPerSecond.Get(dc),
+		PollerScalingBacklogAgeScaleUp:  dynamicconfig.MatchingPollerScalingBacklogAgeScaleUp.Get(dc),
+		PollerScalingSyncMatchWaitTime:  dynamicconfig.MatchingPollerScalingSyncMatchWaitTime.Get(dc),
+		PollerScalingDecisionsPerSecond: dynamicconfig.MatchingPollerScalingDecisionsPerSecond.Get(dc),
 
 		LogAllReqErrors: dynamicconfig.LogAllReqErrors.Get(dc),
 	}
@@ -382,17 +376,11 @@ func newTaskQueueConfig(tq *tqid.TaskQueue, config *Config, ns namespace.Name) *
 		TaskQueueInfoByBuildIdTTL: func() time.Duration {
 			return config.TaskQueueInfoByBuildIdTTL(ns.String(), taskQueueName, taskType)
 		},
-		PollerScalingMinimumBacklog: func() int64 {
-			return int64(config.PollerScalingMinimumBacklog(ns.String(), taskQueueName, taskType))
+		PollerScalingBacklogAgeScaleUp: func() time.Duration {
+			return config.PollerScalingBacklogAgeScaleUp(ns.String(), taskQueueName, taskType)
 		},
 		PollerScalingSyncMatchWaitTime: func() time.Duration {
 			return config.PollerScalingSyncMatchWaitTime(ns.String(), taskQueueName, taskType)
-		},
-		PollerScalingDispatchUpFraction: func() float32 {
-			return float32(config.PollerScalingDispatchUpFraction(ns.String(), taskQueueName, taskType))
-		},
-		PollerScalingDispatchDownFraction: func() float32 {
-			return float32(config.PollerScalingDispatchDownFraction(ns.String(), taskQueueName, taskType))
 		},
 		PollerScalingDecisionsPerSecond: func() float64 {
 			return config.PollerScalingDecisionsPerSecond(ns.String(), taskQueueName, taskType)

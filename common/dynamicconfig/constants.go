@@ -1254,10 +1254,10 @@ these log lines can be noisy, we want to be able to turn on and sample selective
 		100,
 		`MatchingMaxTaskQueuesInDeployment represents the maximum number of task-queues that can be registered in a single worker deployment version`,
 	)
-	MatchingPollerScalingMinimumBacklog = NewTaskQueueIntSetting(
+	MatchingPollerScalingBacklogAgeScaleUp = NewTaskQueueDurationSetting(
 		"matching.pollerScalingMinimumBacklog",
-		1,
-		`MatchingPollerScalingMinimumBacklog is the minimum backlog size that must be accumulated before 
+		200*time.Millisecond,
+		`MatchingPollerScalingBacklogAgeScaleUp is the minimum backlog size that must be accumulated before 
 a decision to scale up the number of pollers will be issued`,
 	)
 	MatchingPollerScalingSyncMatchWaitTime = NewTaskQueueDurationSetting(
@@ -1265,18 +1265,6 @@ a decision to scale up the number of pollers will be issued`,
 		1*time.Second,
 		`MatchingPollerScalingSyncMatchWaitTime is the duration a sync-matched poller must exceed before
 a decision to scale down the number of pollers will be issued`,
-	)
-	MatchingPollerScalingDispatchUpFraction = NewTaskQueueFloatSetting(
-		"matching.pollerScalingDispatchUpFraction",
-		1.2,
-		`MatchingPollerScalingDispatchUpFraction is the fraction that (task add rate / task dispatch rate) must exceed
-before a decision to scale up the number of pollers will be issued`,
-	)
-	MatchingPollerScalingDispatchDownFraction = NewTaskQueueFloatSetting(
-		"matching.pollerScalingDispatchDownFraction",
-		0.8,
-		`MatchingPollerScalingDispatchDownFraction is the fraction that (task add rate / task dispatch rate) must be
-below before a decision to scale down the number of pollers will be issued`,
 	)
 	MatchingPollerScalingDecisionsPerSecond = NewTaskQueueFloatSetting(
 		"matching.pollerScalingDecisionsPerSecond",
