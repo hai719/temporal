@@ -579,7 +579,7 @@ func (c *ContextImpl) UpdateWorkflowExecutionWithNew(
 	}
 
 	if updateMode == persistence.UpdateWorkflowModeUpdateCurrent && updateWorkflowTransactionPolicy == historyi.TransactionPolicyPassive {
-		go c.logger.Debug(fmt.Sprintf("REMOVEME UpdateWorkflowExecutionWithNew updateWorkflow: %+v", updateWorkflow), tag.SysStackTrace(string(debug.Stack())))
+		c.logger.Debug(fmt.Sprintf("REMOVEME UpdateWorkflowExecutionWithNew updateWorkflow: %+v", updateWorkflow), tag.SysStackTrace(string(debug.Stack())))
 	}
 
 	emitStateTransitionCount(c.metricsHandler, shardContext.GetClusterMetadata(), c.MutableState)

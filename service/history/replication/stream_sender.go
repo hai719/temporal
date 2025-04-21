@@ -553,6 +553,7 @@ Loop:
 					// continue to send task if wait operation times out.
 				}
 			}
+			s.logger.Debug(fmt.Sprintf("REMOVEME task: %+v", task))
 			if err := s.sendToStream(&historyservice.StreamWorkflowReplicationMessagesResponse{
 				Attributes: &historyservice.StreamWorkflowReplicationMessagesResponse_Messages{
 					Messages: &replicationspb.WorkflowReplicationMessages{
