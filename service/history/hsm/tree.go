@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -456,6 +457,10 @@ func (n *Node) DeleteChild(key Key) error {
 		}
 	}
 	delete(n.cache.children, key)
+
+	st := string(debug.Stack())
+	fmt.Printf("REMOVEME DeleteChild node: %+v, key: %+v, call stack: %s", n.Path(), key, st)
+
 	return nil
 }
 

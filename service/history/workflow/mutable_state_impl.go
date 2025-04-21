@@ -31,6 +31,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"time"
@@ -7214,9 +7215,50 @@ func (ms *MutableStateImpl) CurrentVersionedTransition() *persistencespb.Version
 	return transitionhistory.LastVersionedTransition(ms.executionInfo.TransitionHistory)
 }
 
+// func (ms *MutableStateImpl) DumpHSM2(msg string, withCallStack bool) {
+// 	var nodePaths []string
+// 	root := ms.HSM()
+// 	root.Walk(func(node *hsm.Node) error {
+// 		if node.Parent != nil {
+// 			nodePaths = append(nodePaths, fmt.Sprintf("%+v", node.Path()))
+// 		}
+// 		return nil
+// 	})
+// 	s := fmt.Sprintf("REMOVEME HSM Node (%s): %+v, mutableState: %+v", msg, nodePaths, ms)
+// 	if withCallStack {
+// 		ms.logger.Debug(s, tag.SysStackTrace(string(debug.Stack())))
+// 	} else {
+// 		ms.logger.Debug(s)
+// 	}
+// }
+
+func (ms *MutableStateImpl) DumpHSM(msg string, withCallStack bool) {
+	var nodePaths []string
+	root := ms.HSM()
+	ms.logger.Debug(fmt.Sprintf("REMOVEME HSM Node (%s): Begin", msg))
+	root.Walk(func(node *hsm.Node) error {
+		if node.Parent != nil {
+			nodePaths = append(nodePaths, fmt.Sprintf("%+v", node.Path()))
+			ms.logger.Debug(fmt.Sprintf("REMOVEME HSM Node (%s): %+v", msg, node.Path()))
+		}
+		return nil
+	})
+	ms.logger.Debug(fmt.Sprintf("REMOVEME HSM Node (%s): End", msg))
+
+	s := fmt.Sprintf("REMOVEME HSM Node (%s): mutableState.executionInfo: %+v", msg, ms.executionInfo)
+	if withCallStack {
+		ms.logger.Debug(s, tag.SysStackTrace(string(debug.Stack())))
+	} else {
+		ms.logger.Debug(s)
+	}
+}
+
 func (ms *MutableStateImpl) ApplyMutation(
 	mutation *persistencespb.WorkflowMutableStateMutation,
 ) error {
+
+	ms.DumpHSM("ApplyMutation Begin", true)
+
 	prevExecutionInfoSize := ms.executionInfo.Size()
 	currentVersionedTransition := ms.CurrentVersionedTransition()
 
@@ -7225,10 +7267,12 @@ func (ms *MutableStateImpl) ApplyMutation(
 	if err != nil {
 		return err
 	}
+	ms.DumpHSM("before syncExecutionInfo", false)
 	err = ms.syncExecutionInfo(ms.executionInfo, mutation.ExecutionInfo, false)
 	if err != nil {
 		return err
 	}
+	ms.DumpHSM("after syncExecutionInfo", false)
 	if mutation.ExecutionInfo.WorkflowTaskType == enumsspb.WORKFLOW_TASK_TYPE_SPECULATIVE {
 		ms.workflowTaskManager.deleteWorkflowTask()
 	}
@@ -7250,10 +7294,12 @@ func (ms *MutableStateImpl) ApplyMutation(
 		return err
 	}
 
+	ms.DumpHSM("before applyUpdatesToStateMachineNodes", false)
 	err = ms.applyUpdatesToStateMachineNodes(mutation.UpdatedSubStateMachines)
 	if err != nil {
 		return err
 	}
+	ms.DumpHSM("after applyUpdatesToStateMachineNodes", false)
 
 	ms.approximateSize += ms.executionInfo.Size() - prevExecutionInfoSize
 
@@ -7380,6 +7426,7 @@ func (ms *MutableStateImpl) applyUpdatesToStateMachineNodes(
 	// Source cluster uses Walk() to generate node mutations.
 	// Walk() uses pre-order DFS. Updated parent nodes will be added before children.
 	for _, nodeMutation := range nodeMutations {
+		ms.logger.Debug(fmt.Sprintf("REMOVEME HSM Node Mutation: %+v", nodeMutation.Path.Path))
 		var internalNode *persistencespb.StateMachineNode
 		incomingPath := []hsm.Key{}
 		for _, p := range nodeMutation.Path.Path {
@@ -7394,9 +7441,11 @@ func (ms *MutableStateImpl) applyUpdatesToStateMachineNodes(
 			if len(parent) == 0 {
 				parent = root.Path()
 			}
+			ms.logger.Debug(fmt.Sprintf("REMOVEME HSM Node Mutation: node not found, check parent: %+v", parent))
 			parentNode, err := root.Child(parent)
 			if err != nil {
 				// we don't have enough information to recreate all parents
+				ms.logger.Debug(fmt.Sprintf("REMOVEME HSM Node Mutation: parent not found: %+v", parent))
 				return err
 			}
 

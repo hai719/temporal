@@ -27,6 +27,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 
 	"go.opentelemetry.io/otel/trace"
 	commonpb "go.temporal.io/api/common/v1"
@@ -113,9 +114,11 @@ func (c *ContextImpl) IsDirty() bool {
 func (c *ContextImpl) Clear() {
 	metrics.WorkflowContextCleared.With(c.metricsHandler).Record(1)
 	if c.MutableState != nil {
+		ms := c.MutableState
 		c.MutableState.GetQueryRegistry().Clear()
 		c.MutableState.RemoveSpeculativeWorkflowTaskTimeoutTask()
 		c.MutableState = nil
+		go ms.DumpHSM("ContextImpl.Clear", true)
 	}
 	if c.updateRegistry != nil {
 		c.updateRegistry.Clear()
@@ -182,16 +185,20 @@ func (c *ContextImpl) LoadMutableState(ctx context.Context, shardContext history
 		// returned by NewMutableStateFromDB().
 		// Thus causing NPE (e.g. when calling c.Clear()) or other unexpected behavior.
 		c.MutableState = mutableState
+		c.logger.Debug("REMOVEME LoadMutableState NewMutableStateFromDB")
 	}
 
+	c.MutableState.DumpHSM("LoadMutableState 2", true)
 	flushBeforeReady, err := c.MutableState.StartTransaction(namespaceEntry)
 	if err != nil {
 		return nil, err
 	}
 	if !flushBeforeReady {
+		c.MutableState.DumpHSM("LoadMutableState 3", false)
 		return c.MutableState, nil
 	}
 
+	c.MutableState.DumpHSM("LoadMutableState 4", false)
 	if err = c.UpdateWorkflowExecutionAsActive(
 		ctx,
 		shardContext,
@@ -199,6 +206,7 @@ func (c *ContextImpl) LoadMutableState(ctx context.Context, shardContext history
 		return nil, err
 	}
 
+	c.MutableState.DumpHSM("LoadMutableState 5", false)
 	flushBeforeReady, err = c.MutableState.StartTransaction(namespaceEntry)
 	if err != nil {
 		return nil, err
@@ -206,6 +214,8 @@ func (c *ContextImpl) LoadMutableState(ctx context.Context, shardContext history
 	if flushBeforeReady {
 		return nil, serviceerror.NewInternal("Context counter flushBeforeReady status after loading mutable state from DB")
 	}
+
+	c.MutableState.DumpHSM("LoadMutableState 6", false)
 
 	return c.MutableState, nil
 }
@@ -566,6 +576,10 @@ func (c *ContextImpl) UpdateWorkflowExecutionWithNew(
 		newWorkflowEventsSeq,
 	); err != nil {
 		return err
+	}
+
+	if updateMode == persistence.UpdateWorkflowModeUpdateCurrent && updateWorkflowTransactionPolicy == historyi.TransactionPolicyPassive {
+		go c.logger.Debug(fmt.Sprintf("REMOVEME UpdateWorkflowExecutionWithNew updateWorkflow: %+v", updateWorkflow), tag.SysStackTrace(string(debug.Stack())))
 	}
 
 	emitStateTransitionCount(c.metricsHandler, shardContext.GetClusterMetadata(), c.MutableState)

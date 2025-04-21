@@ -376,5 +376,6 @@ type (
 
 		DeleteSubStateMachine(path *persistencespb.StateMachinePath) error
 		IsSubStateMachineDeleted() bool
+		DumpHSM(msg string, withCallStack bool)
 	}
 )

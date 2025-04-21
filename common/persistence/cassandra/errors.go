@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"runtime/debug"
 	"sort"
 
 	persistencespb "go.temporal.io/server/api/persistence/v1"
@@ -240,9 +241,10 @@ func extractCurrentWorkflowConflictError(
 		// TODO maybe assert actualCurrentRunID == executionState.RunId ?
 
 		return &p.CurrentWorkflowConditionFailedError{
-			Msg: fmt.Sprintf("Encounter current workflow error, request run ID: %v, actual run ID: %v",
+			Msg: fmt.Sprintf("Encounter current workflow error, request run ID: %v, actual run ID: %v, callstack: %s",
 				requestCurrentRunID,
 				actualCurrentRunID,
+				string(debug.Stack()),
 			),
 			RequestIDs:       executionState.RequestIds,
 			RunID:            executionState.RunId,

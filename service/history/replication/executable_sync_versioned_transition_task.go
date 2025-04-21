@@ -127,7 +127,10 @@ func (e *ExecutableSyncVersionedTransitionTask) Execute() error {
 	if err != nil {
 		return err
 	}
-	return engine.ReplicateVersionedTransition(ctx, e.taskAttr.VersionedTransitionArtifact, e.SourceClusterName())
+	e.Logger.Debug(fmt.Sprintf("REMOVEME SyncVersionedTransition replication task (%d) to be executed: %+v", e.TaskID(), e.taskAttr))
+	err = engine.ReplicateVersionedTransition(ctx, e.taskAttr.VersionedTransitionArtifact, e.SourceClusterName())
+	e.Logger.Debug(fmt.Sprintf("REMOVEME SyncVersionedTransition replication task (%d) executed: %+v", e.TaskID(), e.taskAttr), tag.Error(err))
+	return err
 }
 
 func (e *ExecutableSyncVersionedTransitionTask) HandleErr(err error) error {

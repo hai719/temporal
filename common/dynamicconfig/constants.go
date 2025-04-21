@@ -1415,12 +1415,16 @@ will wait on workflow lock acquisition. Requires service restart to take effect.
 	)
 	HistoryCacheHostLevelMaxSize = NewGlobalIntSetting(
 		"history.hostLevelCacheMaxSize",
-		128000,
+		// 128000,
+		1280,
+		// 16,
 		`HistoryCacheHostLevelMaxSize is the maximum number of entries in the host level history cache`,
 	)
 	HistoryCacheHostLevelMaxSizeBytes = NewGlobalIntSetting(
 		"history.hostLevelCacheMaxSizeBytes",
-		256000*4*1024,
+		// 256000*4*1024,
+		256*4*1024,
+		// 4*1024,
 		`HistoryCacheHostLevelMaxSizeBytes is the maximum size of the host level history cache. This is only used if
 HistoryCacheSizeBasedLimit is set to true.`,
 	)
