@@ -1774,15 +1774,15 @@ func (mr *MockMutableStateMockRecorder) DeleteSubStateMachine(path any) *gomock.
 }
 
 // DumpHSM mocks base method.
-func (m *MockMutableState) DumpHSM(msg string) {
+func (m *MockMutableState) DumpHSM(msg string, withCallStack bool) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DumpHSM", msg)
+	m.ctrl.Call(m, "DumpHSM", msg, withCallStack)
 }
 
 // DumpHSM indicates an expected call of DumpHSM.
-func (mr *MockMutableStateMockRecorder) DumpHSM(msg any) *gomock.Call {
+func (mr *MockMutableStateMockRecorder) DumpHSM(msg, withCallStack any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DumpHSM", reflect.TypeOf((*MockMutableState)(nil).DumpHSM), msg)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DumpHSM", reflect.TypeOf((*MockMutableState)(nil).DumpHSM), msg, withCallStack)
 }
 
 // FlushBufferedEvents mocks base method.

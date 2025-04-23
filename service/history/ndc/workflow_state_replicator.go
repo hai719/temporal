@@ -266,7 +266,7 @@ func (r *WorkflowStateReplicatorImpl) ReplicateVersionedTransition(
 	case *serviceerror.NotFound:
 		return r.applySnapshot(ctx, namespaceID, wid, rid, wfCtx, releaseFn, nil, versionedTransition, sourceClusterName)
 	case nil:
-		ms.DumpHSM("ReplicateVersionedTransition 1", false)
+		// ms.DumpHSM("ReplicateVersionedTransition 1", false)
 		localTransitionHistory := ms.GetExecutionInfo().TransitionHistory
 		if len(localTransitionHistory) == 0 {
 			// This could happen when versioned transition feature is just enabled
@@ -363,7 +363,7 @@ func (r *WorkflowStateReplicatorImpl) applyMutation(
 			nil,
 		)
 	}
-	localMutableState.DumpHSM("applyMutation 1", false)
+	// localMutableState.DumpHSM("applyMutation 1", false)
 	localTransitionHistory := transitionhistory.CopyVersionedTransitions(localMutableState.GetExecutionInfo().TransitionHistory)
 	localVersionedTransition := transitionhistory.LastVersionedTransition(localTransitionHistory)
 	sourceTransitionHistory := mutation.StateMutation.ExecutionInfo.TransitionHistory
@@ -395,13 +395,13 @@ func (r *WorkflowStateReplicatorImpl) applyMutation(
 	if err != nil {
 		return err
 	}
-	localMutableState.DumpHSM("applyMutation 2", false)
+	// localMutableState.DumpHSM("applyMutation 2", false)
 	err = localMutableState.ApplyMutation(mutation.StateMutation)
 	if err != nil {
 		return err
 	}
 
-	localMutableState.DumpHSM("applyMutation 3", false)
+	// localMutableState.DumpHSM("applyMutation 3", false)
 	var newRunWorkflow Workflow
 	if versionedTransition.NewRunInfo != nil {
 		newRunWorkflow, err = r.getNewRunWorkflow(ctx, namespaceID, workflowID, localMutableState, versionedTransition.NewRunInfo)

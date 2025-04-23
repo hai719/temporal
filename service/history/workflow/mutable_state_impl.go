@@ -7251,11 +7251,14 @@ func (ms *MutableStateImpl) DumpHSM(msg string, withCallStack bool) {
 	} else {
 		ms.logger.Debug(s)
 	}
+	ms.logger.Debug(fmt.Sprintf("REMOVEME (%s) ms:%p SubStateMachinesByType:%p", msg, ms, ms.executionInfo.SubStateMachinesByType))
 }
 
 func (ms *MutableStateImpl) ApplyMutation(
 	mutation *persistencespb.WorkflowMutableStateMutation,
 ) error {
+
+	initialSubStateMachinesByTypePtr := ms.executionInfo.SubStateMachinesByType
 
 	ms.DumpHSM("ApplyMutation Begin", true)
 
@@ -7302,6 +7305,10 @@ func (ms *MutableStateImpl) ApplyMutation(
 	ms.DumpHSM("after applyUpdatesToStateMachineNodes", false)
 
 	ms.approximateSize += ms.executionInfo.Size() - prevExecutionInfoSize
+
+	if len(initialSubStateMachinesByTypePtr) != 0 && len(ms.executionInfo.SubStateMachinesByType) == 0 {
+		ms.DumpHSM("SubStateMachinesByType pointer changed", false)
+	}
 
 	// approximateSize update will be handled upon closing transaction
 	return ms.chasmTree.ApplyMutation(chasm.NodesMutation{

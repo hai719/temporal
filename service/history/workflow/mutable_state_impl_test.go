@@ -1380,6 +1380,11 @@ func (s *mutableStateSuite) TestSanitizedMutableState() {
 	s.NoError(err)
 
 	mutableStateProto := mutableState.CloneToProto()
+	fmt.Printf("REMOVEME 1 %p\n", mutableStateProto.ExecutionInfo.SubStateMachinesByType)
+	mutableState.executionInfo.SubStateMachinesByType = make(map[string]*persistencespb.StateMachineMap)
+	mutableStateProto = mutableState.CloneToProto()
+	fmt.Printf("REMOVEME 2 %p\n", mutableStateProto.ExecutionInfo.SubStateMachinesByType)
+
 	sanitizedMutableState, err := NewSanitizedMutableState(s.mockShard, s.mockEventsCache, s.logger, tests.LocalNamespaceEntry, mutableStateProto, 0, 0)
 	s.NoError(err)
 	s.Equal(int64(0), sanitizedMutableState.executionInfo.LastFirstEventTxnId)
