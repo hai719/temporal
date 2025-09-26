@@ -283,6 +283,7 @@ func (r *StreamReceiverImpl) ackMessage(
 	}); err != nil {
 		return 0, NewStreamError("stream_receiver failed to send", err)
 	}
+	r.logger.Info("REMOVEME: Sending sync replication state", tag.AckLevel(inclusiveLowWaterMark))
 	metrics.ReplicationTasksRecvBacklog.With(r.MetricsHandler).Record(
 		int64(size),
 		metrics.FromClusterIDTag(r.serverShardKey.ClusterID),
@@ -328,6 +329,7 @@ func (r *StreamReceiverImpl) processMessages(
 			// This should not happen because source side is sending task 1 by 1. Validate here just in case.
 			return NewStreamError("ReplicationTask priority check failed", err)
 		}
+		r.logger.Info("REMOVEME: Processing replication tasks", tag.NewInt("taskCount", len(streamResp.Resp.GetMessages().ReplicationTasks)), tag.NewInt64("exclusiveHighWatermark", streamResp.Resp.GetMessages().ExclusiveHighWatermark))
 		convertedTasks := r.taskConverter.Convert(
 			clusterName,
 			r.clientShardKey,
@@ -350,6 +352,7 @@ func (r *StreamReceiverImpl) processMessages(
 				return err
 			}
 			scheduler.Submit(task)
+			r.logger.Info("REMOVEME: Submitted replication task", tag.TaskID(task.TaskID()))
 		}
 	}
 	return nil

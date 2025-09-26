@@ -656,6 +656,8 @@ Loop:
 }
 
 func (s *StreamSenderImpl) sendToStream(payload *historyservice.StreamWorkflowReplicationMessagesResponse) error {
+
+	s.logger.Info("REMOVEME: Send replication tasks", tag.NewInt("taskCount", len(payload.GetMessages().GetReplicationTasks())), tag.NewInt64("exclusiveHighWatermark", payload.GetMessages().GetExclusiveHighWatermark()))
 	s.sendLock.Lock()
 	defer s.sendLock.Unlock()
 	err := s.server.Send(payload)
