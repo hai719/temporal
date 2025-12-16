@@ -601,6 +601,7 @@ Loop:
 			}); err != nil {
 				return err
 			}
+			s.logger.Info("REMOVEME: Sent replication task", tag.TaskID(task.GetSourceTaskId()))
 			skipCount = 0
 			metrics.ReplicationTasksSend.With(s.metrics).Record(
 				int64(1),
