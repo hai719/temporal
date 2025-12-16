@@ -552,7 +552,7 @@ stop-dependencies:
 	docker compose $(DOCKER_COMPOSE_FILES) down
 
 start-dependencies-cdc:
-	docker compose $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_CDC_FILES) up
+	docker compose $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_CDC_FILES) up -d
 
 stop-dependencies-cdc:
 	docker compose $(DOCKER_COMPOSE_FILES) $(DOCKER_COMPOSE_CDC_FILES) down
